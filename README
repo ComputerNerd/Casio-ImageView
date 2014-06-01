@@ -1,0 +1,21 @@
+=============================================
+Casio prizm PNG viewer
+=============================================
+This is a png viewer for the casio prizm.
+It uses libpng (which is paired with zlib) to decompress a PNG file.
+When you load a png file it is resampled to fill the screen but aspect ratio is preserved.
+As of now a simple bilinear filtering is used
+but if there is intrest I may replace it with something better.
+
+The version you downloaded is version 1.0
+It is likely that there will be versions
+so if you notice that I post in the thread
+see what I put it may be an update.
+
+============================================
+Controls
+============================================
+You will see a file browser on startup use the arrow pad to select a file.
+Then press either F1 or EXE to select the PNG file.
+Press any key except menu (which actully takes you to the menu)
+to go back to the file browser.
