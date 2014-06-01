@@ -188,7 +188,7 @@ int main(void){
 				fclose(fp);
 				Bdisp_PutDisp_DD();
 				//while(!key_down(KEY_PRGM_EXIT));
-				int col=0,row=0,
+				int col=0,row=0;
 				unsigned short keycode=0;
 				GetKeyWait_OS(&col,&row,0,0,0,&keycode);//Better solution to avoid border
 			}
