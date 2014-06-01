@@ -142,6 +142,7 @@ int main(void){
 					row_pointers[0]=decodeBuf;
 					row_pointers[1]=decodeBuf+(width*3);
 					png_read_rows(png_ptr, row_pointers, NULL,2);
+					unsigned left=height-2;
 					for (i=0;i<h2;i++){
 						//Deterimin how many lines to read
 						unsigned read=((y_ratio * i)>>12)-yo;
@@ -149,12 +150,16 @@ int main(void){
 							while(read>=3){
 								png_read_row(png_ptr,decodeBuf,NULL);//Apperntly this is the right way to skip a row http://osdir.com/ml/graphics.png.devel/2008-05/msg00038.html
 								--read;
+								--left;
 							}
 							if(read==1){
 								memcpy(decodeBuf,decodeBuf+(width*3),width*3);
 								png_read_row(png_ptr,decodeBuf+(width*3),NULL);
-							}else
+								--left;
+							}else{
 								png_read_rows(png_ptr, row_pointers, NULL,2);
+								left-=2;
+							}
 						}
 						for (j=0;j<w2;j++){
 							unsigned A[3],B[3],C[3],D[3];
@@ -180,6 +185,9 @@ int main(void){
 							//*out++=A+B+C+D;
 						}
 						vram+=384-w2;
+					}
+					while(left--){
+						png_read_row(png_ptr,decodeBuf,NULL);//Avoid a too much data warning
 					}
 				}
 				//cleanup

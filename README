@@ -7,8 +7,8 @@ When you load a png file it is resampled to fill the screen but aspect ratio is 
 As of now a simple bilinear filtering is used
 but if there is intrest I may replace it with something better.
 
-The version you downloaded is version 1.0
-It is likely that there will be versions
+The version you downloaded is version 1.001
+It is likely that there will be new versions
 so if you notice that I post in the thread
 see what I put it may be an update.
 
@@ -23,7 +23,7 @@ to go back to the file browser.
 ===========================================
 Notes and tips
 ===========================================
-Since the casio prizm does not have lots of memory run pngout
+Since the casio prizm does not have lots of flash memory run pngout
 on the images before putting them on your calculator.
 I have included instructions on how to compile libpng and zlib here:
 https://github.com/ComputerNerd/Casio-ImageView/blob/master/Compile%20Libpng

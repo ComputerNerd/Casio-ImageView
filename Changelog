@@ -1,0 +1,5 @@
+Version 1.001
+minor bugfix: fixed harmless warning from libpng
+
+Version 1
+Initial release
