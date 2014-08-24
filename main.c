@@ -17,15 +17,6 @@ void abort(void){
 	while(1)
 		GetKey(&key);
 }
-static int key_down(int basic_keycode){
-	const unsigned short* keyboard_register = (unsigned short*)0xA44B0000;
-	int row, col, word, bit;
-	row = basic_keycode%10;
-	col = basic_keycode/10-1;
-	word = row>>1;
-	bit = col + ((row&1)<<3);
-	return (0 != (keyboard_register[word] & 1<<bit));
-}
 int main(void){
 	Bdisp_EnableColor(1);
 	while(1){
@@ -50,8 +41,8 @@ int main(void){
 				}
 				uint8_t header[8];
 				if(fread(header, 1, 8, fp)!=8){
-					puts("Read error");
 					fclose(fp);
+					puts("Read error");
 					break;
 				}
 				int is_png = !png_sig_cmp(header, 0, 8);
@@ -77,7 +68,8 @@ int main(void){
 				png_set_sig_bytes(png_ptr, 8);
 				png_read_info(png_ptr, info_ptr);
 				//get information about the image
-				int width,height,color_type,bit_depth;
+				unsigned width,height;
+				int color_type,bit_depth;
 				png_get_IHDR(png_ptr, info_ptr,&width,&height,&bit_depth,&color_type,0,0,0);
 				if (color_type == PNG_COLOR_TYPE_PALETTE)
 					png_set_palette_to_rgb(png_ptr);
@@ -114,8 +106,8 @@ int main(void){
 						d+=3;
 					}
 				}else{
-					int w2,h2,centerx,centery;
-					int xpick=(int)((384<<16)/width)+1,ypick=(int)((216<<16)/height)+1;
+					unsigned w2,h2,centerx,centery;
+					unsigned xpick=((384<<16)/width)+1,ypick=((216<<16)/height)+1;
 					if(xpick==ypick){
 						w2=384;
 						h2=216;
@@ -142,7 +134,7 @@ int main(void){
 					row_pointers[1]=decodeBuf+(width*3);
 					png_read_rows(png_ptr, row_pointers, NULL,2);
 					unsigned left=height-2;
-					for (i=0;i<h2;i++){
+					for (i=0;i<h2;++i){
 						//Deterimin how many lines to read
 						unsigned read=((y_ratio * i)>>12)-yo;
 						if(read){
@@ -160,7 +152,7 @@ int main(void){
 								left-=2;
 							}
 						}
-						for (j=0;j<w2;j++){
+						for(j=0;j<w2;++j){
 							unsigned A[3],B[3],C[3],D[3];
 							unsigned x = x_ratio * j;
 							unsigned y = y_ratio * i;
@@ -195,7 +187,6 @@ int main(void){
 				fclose(fp);
 				fp=0;
 				Bdisp_PutDisp_DD();
-				//while(!key_down(KEY_PRGM_EXIT));
 				int col=0,row=0;
 				unsigned short keycode=0;
 				GetKeyWait_OS(&col,&row,0,0,0,&keycode);//Better solution to avoid border
