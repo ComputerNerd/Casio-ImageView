@@ -7,10 +7,13 @@
 #include <fxcg/misc.h>
 #include "filegui.h"
 #define VRAM_ADDRESS 0xA8000000
+static FILE*fp;
 void abort(void){
 	int x=0,y=160;
 	PrintMini(&x,&y,"Abort called",0,0xFFFFFFFF,0,0,0xFFFF,0,1,0);
 	int key;
+	if(fp)
+		fclose(fp);
 	while(1)
 		GetKey(&key);
 }
@@ -38,10 +41,10 @@ int main(void){
 			memset((unsigned short*)VRAM_ADDRESS,0,384*216*2);
 			char buf[128];
 			FBL_Filelist_getFilename(list,buf,127);
-			if (!strncmp(buf,"\\\\fls0\\",7)){
+			if(!strncmp(buf,"\\\\fls0\\",7)){
 				//load png file
-				FILE *fp = fopen(buf, "rb");
-				if (!fp){
+				fp = fopen(buf, "rb");
+				if(!fp){
 					perror("Error while reading file:");
 					break;
 				}
@@ -52,28 +55,24 @@ int main(void){
 					break;
 				}
 				int is_png = !png_sig_cmp(header, 0, 8);
-				if (!is_png){
+				if(!is_png){
 					fclose(fp);
 					puts("Make sure what you are loading is a valid png");
 					break;
 				}
 				png_structp png_ptr=png_create_read_struct(PNG_LIBPNG_VER_STRING,NULL,NULL,NULL);
 				if (!png_ptr){
+					fclose(fp);
 					puts("Error creating png read struct");
 					break;
 				}
 				png_infop info_ptr = png_create_info_struct(png_ptr);
 				if (!info_ptr){
+					fclose(fp);
 					puts("Error creating png info struct");
 					png_destroy_read_struct(&png_ptr,(png_infopp)NULL, (png_infopp)NULL);
 					break;
 				}
-				/*if (setjmp(png_jmpbuf(png_ptr))){//I compiled libpng with PNG_SETJMP_NOT_SUPPORTED so this is not needed.
-					puts("libpng setjmp error");
-					png_destroy_read_struct(&png_ptr, &info_ptr,NULL);
-					fclose(fp);
-					return 0;
-				}*/
 				png_init_io(png_ptr, fp);
 				png_set_sig_bytes(png_ptr, 8);
 				png_read_info(png_ptr, info_ptr);
@@ -194,13 +193,13 @@ int main(void){
 				png_read_end(png_ptr,(png_infop)NULL);
 				png_destroy_read_struct(&png_ptr, &info_ptr,(png_infopp)NULL);
 				fclose(fp);
+				fp=0;
 				Bdisp_PutDisp_DD();
 				//while(!key_down(KEY_PRGM_EXIT));
 				int col=0,row=0;
 				unsigned short keycode=0;
 				GetKeyWait_OS(&col,&row,0,0,0,&keycode);//Better solution to avoid border
 			}
-			
 		}
 	}
 }
