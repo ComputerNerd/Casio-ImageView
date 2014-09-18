@@ -139,7 +139,7 @@ int main(void){
 						unsigned read=((y_ratio * i)>>12)-yo;
 						if(read){
 							while(read>=3){
-								png_read_row(png_ptr,decodeBuf,NULL);//Apperntly this is the right way to skip a row http://osdir.com/ml/graphics.png.devel/2008-05/msg00038.html
+								png_read_row(png_ptr,decodeBuf,NULL);//Apparently this is the right way to skip a row http://osdir.com/ml/graphics.png.devel/2008-05/msg00038.html
 								--read;
 								--left;
 							}
