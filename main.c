@@ -91,7 +91,7 @@ int main(void){
 				unsigned h;
 				if((width==384)&&(height<=216)){
 					png_bytep row_pointers[216];
-					//Simply center image and copy data
+					//Decode the PNG file without scaling.
 					vram+=((216-height)/2)*384;
 					uint8_t*imgTmp=alloca(width*height*3);
 					uint8_t*d=imgTmp;
@@ -107,7 +107,7 @@ int main(void){
 					}
 				}else{
 					unsigned w2,h2,centerx,centery;
-					unsigned xpick=((384<<16)/width)+1,ypick=((216<<16)/height)+1;
+					unsigned xpick=(384<<16)/width,ypick=(216<<16)/height;
 					if(xpick==ypick){
 						w2=384;
 						h2=216;
@@ -124,32 +124,38 @@ int main(void){
 						centery=0;
 					}
 					// EDIT: added +1 to account for an early rounding problem
-					unsigned x_ratio = ((width<<12)/w2)+1;
-					unsigned y_ratio = ((height<<12)/h2)+1;
+					unsigned x_ratio = (width<<12)/w2;
+					unsigned y_ratio = (height<<12)/h2;
 					uint8_t * decodeBuf=alloca(width*3*2);//Enough memory to hold two rows of data
 					vram+=(centery*384)+centerx;
 					unsigned i,j,yo=0;
-					png_bytep row_pointers[2];
-					row_pointers[0]=decodeBuf;
-					row_pointers[1]=decodeBuf+(width*3);
-					png_read_rows(png_ptr, row_pointers, NULL,2);
-					unsigned left=height-2;
-					for (i=0;i<h2;++i){
-						//Deterimin how many lines to read
+					png_read_row(png_ptr,decodeBuf,NULL);
+					unsigned left=height-1;
+					if(y_ratio>=4096){
+						unsigned skip=y_ratio>>12;
+						while(skip--){
+							png_read_row(png_ptr,decodeBuf+(width*3),NULL);
+							--left;
+						}
+					}else{
+						png_read_row(png_ptr,decodeBuf+(width*3),NULL);
+						--left;
+					}
+					for(i=0;i<h2;++i){
+						//Determine how many lines to read
 						unsigned read=((y_ratio * i)>>12)-yo;
 						if(read){
-							while(read>=3){
-								png_read_row(png_ptr,decodeBuf,NULL);//Apparently this is the right way to skip a row http://osdir.com/ml/graphics.png.devel/2008-05/msg00038.html
-								--read;
-								--left;
-							}
 							if(read==1){
 								memcpy(decodeBuf,decodeBuf+(width*3),width*3);
 								png_read_row(png_ptr,decodeBuf+(width*3),NULL);
 								--left;
 							}else{
-								png_read_rows(png_ptr, row_pointers, NULL,2);
-								left-=2;
+								png_read_row(png_ptr,decodeBuf,NULL);
+								--left;
+								while(--read){
+									png_read_row(png_ptr,decodeBuf+(width*3),NULL);//Apparently this is the right way to skip a row according to: http://osdir.com/ml/graphics.png.devel/2008-05/msg00038.html
+									--left;
+								}
 							}
 						}
 						for(j=0;j<w2;++j){

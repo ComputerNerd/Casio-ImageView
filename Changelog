@@ -1,5 +1,9 @@
+Version 1.002
+Another minor release this fixes a minor scaling bug and uses an up to date
+version of Libpng (version 1.6.16).
+
 Version 1.001
-minor bugfix: fixed harmless warning from libpng
+Minor bugfix: fixed harmless warning from Libpng
 
 Version 1
 Initial release

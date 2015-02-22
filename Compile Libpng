@@ -1,13 +1,14 @@
-To compile libpng zlib must first be compiled
-Before running make you must configure zlib to use the sh3eb-elf compiler run
-Note this setup below is optimized for gcc 4.9 configured with plugin support
+Note this setup below is optimized for gcc 4.9 configured with plugin support.
+
+To compile Libpng Zlib must first be compiled
+Before running make you must configure Zlib to use the sh3eb-elf compiler. To do that run:
 CC=sh3eb-elf-gcc RANLIB=~/casio-gcc/bin/sh3eb-elf-gcc-ranlib NM=~/casio-gcc/bin/sh3eb-elf-gcc-nm AR=~/casio-gcc/bin/sh3eb-elf-gcc-ar CFLAGS="-m4a-nofpu -mb -O2 -flto -fuse-linker-plugin -mhitachi -Wall -L$HOME/Documents/libfxcg/lib -nostartfiles -T$HOME/Documents/libfxcg/toolchain/prizm.x -Wl,-static -Wl,-gc-sections -I$HOME/Documents/libfxcg/include" LDFLAGS="-L$HOME/Documents/libfxcg/lib -nostartfiles -T$HOME/Documents/libfxcg/toolchain/prizm.x -Wl,-static -Wl,-gc-sections -Wl,-O2 -O2 -flto -fuse-linker-plugin"  ./configure --static
-Please edit the paths before running this command to refelect where you have libfxcg installed
-Also you may be thinking to yourself that the CFLAGS contain stuff that should be in LDFLAGS. The reaason this is in CFLAGS is because the ./configure script sucks and does not take into account LDFLAGS when doing its test.
-Now that your have setup zlib you can now compile it using make so simply type make and you are done it will compile without any errors
-So you must configure libpng run
+Please edit the paths before running this command to reflect where you have Libfxcg installed
+Also you may be thinking to yourself that CFLAGS contain flags that should be in LDFLAGS. The reason these flags are in CFLAGS is due to the fact the ./configure script has a minor design flaw and does not take into account LDFLAGS when doing its test.
+Now that you have setup Zlib you can now compile it using make so simply type make and you are done it will compile without any errors
+Now you must configure Libpng. To do so run:
 RANLIB=~/casio-gcc/bin/sh3eb-elf-gcc-ranlib NM=~/casio-gcc/bin/sh3eb-elf-gcc-nm AR=~/casio-gcc/bin/sh3eb-elf-gcc-ar ./configure --host=sh3eb-elf --build=x86_64-unknown-linux-gnu CPPFLAGS="-DPNG_NO_FLOATING_ARITHMETIC -DPNG_SETJMP_NOT_SUPPORTED -I$HOME/Documents/libfxcg/include -I$HOME/Documents/libfxcg/examples/zlib-1.2.8/" CFLAGS="-m4a-nofpu -mb -O2 -flto -fuse-linker-plugin -mhitachi -Wall -I$HOME/Documents/libfxcg/include -I$HOME/Documents/libfxcg/examples/zlib-1.2.8/" LDFLAGS="-L$HOME/Documents/libfxcg/lib -L$HOME/Documents/libfxcg/examples/zlib-1.2.8/ -nostartfiles -T$HOME/Documents/libfxcg/toolchain/prizm.x -Wl,-static -Wl,-gc-sections -Wl,-O2 -O2 -flto -fuse-linker-plugin" --with-gnu-ld
 Please change --build and the paths again
-And again just run make and you are done
+Again run make to compile Libpng. This is the last step besides using the compiled libraries.
 Note that make may stop with an error. This may be okay if the library is already built it may just be trying to build some examples.
 If you check in the folder named .libs and see libpng16.a you are done. If not that means the error matters and needs to be addressed.

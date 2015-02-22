@@ -1,43 +1,50 @@
-===========================================
-Casio prizm PNG viewer
-===========================================
-This is a png viewer for the casio prizm.
-It uses libpng (which is paired with zlib) to decompress a PNG file.
-When you load a png file it is resampled to fill the screen but aspect ratio is preserved.
-As of now a simple bilinear filtering is used
-but if there is intrest I may replace it with something better.
+===============================================================================
+                             Casio Prizm PNG viewer
+===============================================================================
+This  is a png viewer for the Casio Prizm. It uses libpng (which is paired with
+zlib)  to  decompress a PNG file. When you load a png file it is  resampled  to
+fill the screen but aspect ratio is preserved. As of now a simple bilinear fil-
+tering is used but if there is interest I may replace it with something better.
 
-The version you downloaded is version 1.001
-It is likely that there will be new versions
-so if you notice that I post in the thread
-see what I put it may be an update.
+The version you downloaded is version 1.002. Note that there is always the pos-
+sibility  for a new version, so if you noticed that I posted in the PNG  viewer
+thread see what I posted, there may be an update.
 
-============================================
-Controls
-============================================
-You will see a file browser on startup use the arrow pad to select a file.
-Then press either F1 or EXE to select the PNG file.
-Press any key except menu (which actully takes you to the menu)
-to go back to the file browser.
+===============================================================================
+                           How to use the PNG viewer
+===============================================================================
+You will see a file browser on startup use the arrow pad to select a file. Then
+press either F1 or EXE to select the PNG file. Press any key except menu (which
+actually takes you to the menu) to go back to the file browser.
 
-===========================================
-Notes and tips
-===========================================
-Since the casio prizm does not have lots of flash memory run pngout
-on the images before putting them on your calculator.
-I have included instructions on how to compile libpng and zlib here:
+===============================================================================
+                                 Notes and tips
+===============================================================================
+Since  the Casio Prizm does not have lots of flash memory run Pngout on the im-
+ages before putting them on your calculator.
+
+I  have  included  instructions  on  how  to  compile  Libpng  and  Zlib  here:
 https://github.com/ComputerNerd/Casio-ImageView/blob/master/Compile%20Libpng
-Following these instructions gets you a libraries (libpng and zlib)
-that you could link against your add-in.
-If you want to use a png in an add-in a good option would be to make a 16bit 1 channel image containg rgb565 data.
-I however would not use png instead I would just use zlib directly with a simpler image format.
-For example uint32_t width,uint32_t height, deflate compressed sequential rgb565 data created by zlib's deflate(2) function.
-But if you feel comfortable with png that is an option.
-Also you can store the pngs as a const array it does not need to be a file. I just used files because this is an image viewer.
-The purpse of this program is simply to show off how capable the casio prizm is.
-The PNG image format is well know and I think some people wrongly precive it as a very ram intensive thing to decode.
-Libpng can output a row at a time or N amount of rows. When width!=384 or if height>=216 then the image is scaled
-Ony enough ram to hold 2 rows is needed which is 6*width bytes of ram. I use bilinear scaling that is why two rows are needed to be read.
-After the code interoplates the pixels the resulting pixel is converted to rgb565 and sent to VRAM.
-When the width==384 and height<=216 a buffer is created and the image is read all at once
-then simply converted to rgb565 and send to VRAM
+Following  these  instructions gets you a libraries (Libpng and Zlib) that  you
+could link against your add-in.
+
+If  you want to use a PNG in an add-in a good option would be to make a 16bit 1
+channel  image containing rgb565 data. Doing so introduces additional  overhead
+with  no benefit so instead it would be better to use Zlib directly with a sim-
+pler  image  format. For example uint32_t width,uint32_t height,  deflate  com-
+pressed sequential rgb565 data created by zlib's deflate() function. But if you
+feel  comfortable with PNG that is an option. Also you can store the PNGs as  a
+const array so that it does not need to be a file. Note that LZMA works well on
+the  Casio Prizm and gets a better compression ratio. Try that in favor of Zlib
+first.
+
+The  purpose of this program is simply to show off how capable the Casio  Prizm
+is.  The PNG image format is well know and I think some people wrongly perceive
+it  as a very ram intensive thing to decode. Libpng can output a row at a  time
+or N amount of rows. When width!=384 or if height>=216 then the image is scaled
+Ony  enough  ram to hold 2 rows is needed which is 6*width bytes of ram. I  use
+bilinear scaling that is why two rows are needed to be read. After the code in-
+terpolates  the  pixels the resulting pixel is converted to rgb565 and sent  to
+VRAM.  When the width==384 and height<=216 a buffer is created and the image is
+read all at once then simply converted to rgb565 and send to VRAM
+
