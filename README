@@ -1,12 +1,12 @@
 ===============================================================================
                              Casio Prizm PNG viewer
 ===============================================================================
-This  is a png viewer for the Casio Prizm. It uses libpng (which is paired with
+This  is a PNG viewer for the Casio Prizm. It uses Libpng (which is paired with
 zlib)  to  decompress a PNG file. When you load a png file it is  resampled  to
 fill the screen but aspect ratio is preserved. As of now a simple bilinear fil-
 tering is used but if there is interest I may replace it with something better.
 
-The version you downloaded is version 1.002. Note that there is always the pos-
+The version you downloaded is version 1.003. Note that there is always the pos-
 sibility  for a new version, so if you noticed that I posted in the PNG  viewer
 thread see what I posted, there may be an update.
 
@@ -29,22 +29,22 @@ Following  these  instructions gets you a libraries (Libpng and Zlib) that  you
 could link against your add-in.
 
 If  you want to use a PNG in an add-in a good option would be to make a 16bit 1
-channel  image containing rgb565 data. Doing so introduces additional  overhead
+channel  image containing RGB565 data. Doing so introduces additional  overhead
 with  no benefit so instead it would be better to use Zlib directly with a sim-
 pler  image  format. For example uint32_t width,uint32_t height,  deflate  com-
-pressed sequential rgb565 data created by zlib's deflate() function. But if you
+pressed sequential RGB565 data created by zlib's deflate() function. But if you
 feel  comfortable with PNG that is an option. Also you can store the PNGs as  a
 const array so that it does not need to be a file. Note that LZMA works well on
 the  Casio Prizm and gets a better compression ratio. Try that in favor of Zlib
 first.
 
 The  purpose of this program is simply to show off how capable the Casio  Prizm
-is.  The PNG image format is well know and I think some people wrongly perceive
+is. The PNG image format is well known and I think some people wrongly perceive
 it  as a very ram intensive thing to decode. Libpng can output a row at a  time
 or N amount of rows. When width!=384 or if height>=216 then the image is scaled
-Ony  enough  ram to hold 2 rows is needed which is 6*width bytes of ram. I  use
+Only enough  ram to hold 2 rows are needed which is 6*width bytes of ram. I use
 bilinear scaling that is why two rows are needed to be read. After the code in-
-terpolates  the  pixels the resulting pixel is converted to rgb565 and sent  to
+terpolates  the  pixels the resulting pixel is converted to RGB565 and sent  to
 VRAM.  When the width==384 and height<=216 a buffer is created and the image is
-read all at once then simply converted to rgb565 and send to VRAM
+read all at once then simply converted to RGB565 and send to VRAM
 

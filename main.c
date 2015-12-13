@@ -6,7 +6,8 @@
 #include <fxcg/keyboard.h>
 #include <fxcg/misc.h>
 #include "filegui.h"
-#define VRAM_ADDRESS 0xA8000000
+#define VRAM_WIDTH 396
+#define VRAM_HEIGHT 224
 static FILE*fp;
 void abort(void){
 	int x=0,y=160;
@@ -17,7 +18,50 @@ void abort(void){
 	while(1)
 		GetKey(&key);
 }
+#define LCD_GRAM	0x202
+#define LCD_BASE	0xB4000000
+#define VRAM_ADDR	0xA8000000
+#define SYNCO() __asm__ volatile("SYNCO\n\t":::"memory");
+// Module Stop Register 0
+#define MSTPCR0		(volatile unsigned*)0xA4150030
+// DMA0 operation register
+#define DMA0_DMAOR	(volatile unsigned short*)0xFE008060
+#define DMA0_SAR_0	(volatile unsigned*)0xFE008020
+#define DMA0_DAR_0	(volatile unsigned*)0xFE008024
+#define DMA0_TCR_0	(volatile unsigned*)0xFE008028
+#define DMA0_CHCR_0	(volatile unsigned*)0xFE00802C
+void DmaWaitNext(void){
+	while(1){
+		if((*DMA0_DMAOR)&4)//Address error has occurred stop looping
+			break;
+		if((*DMA0_CHCR_0)&2)//Transfer is done
+			break;
+	}
+	SYNCO();
+	*DMA0_CHCR_0&=~1;
+	*DMA0_DMAOR=0;
+}
+static void DoDMAlcdNonblockStrip(unsigned y1,unsigned y2,unsigned addr){
+	Bdisp_WriteDDRegister3_bit7(1);
+	Bdisp_DefineDMARange(0,VRAM_WIDTH-1,y1,y2);
+	Bdisp_DDRegisterSelect(LCD_GRAM);
+
+	*MSTPCR0&=~(1<<21);//Clear bit 21
+	*DMA0_CHCR_0&=~1;//Disable DMA on channel 0
+	*DMA0_DMAOR=0;//Disable all DMA
+	*DMA0_SAR_0=(addr+(y1*VRAM_WIDTH*2))&0x1FFFFFFF;//Source address is VRAM
+	*DMA0_DAR_0=LCD_BASE&0x1FFFFFFF;//Destination is LCD
+	*DMA0_TCR_0=((y2-y1+1)*VRAM_WIDTH)/16;//Transfer count bytes/32
+	*DMA0_CHCR_0=0x00101400;
+	*DMA0_DMAOR|=1;//Enable DMA on all channels
+	*DMA0_DMAOR&=~6;//Clear flags
+	*DMA0_CHCR_0|=1;//Enable channel0 DMA
+}
+static void DoDMAlcdNonblock(unsigned addr){
+	DoDMAlcdNonblockStrip(0,VRAM_HEIGHT-1,addr);
+}
 int main(void){
+	static uint16_t __attribute__ ((aligned (32))) VRAM_ADDRESS[VRAM_WIDTH*VRAM_HEIGHT];
 	Bdisp_EnableColor(1);
 	while(1){
 		struct FBL_Filelist_Data *list = FBL_Filelist_cons("\\\\fls0\\", "*.png", "Open file (*.png)");
@@ -29,7 +73,7 @@ int main(void){
 		
 		// Check if a file was returned
 		if(list->result == 1){
-			memset((unsigned short*)VRAM_ADDRESS,0,384*216*2);
+			memset((unsigned short*)VRAM_ADDRESS,0,VRAM_WIDTH*VRAM_HEIGHT*2);
 			char buf[128];
 			FBL_Filelist_getFilename(list,buf,127);
 			if(!strncmp(buf,"\\\\fls0\\",7)){
@@ -48,19 +92,19 @@ int main(void){
 				int is_png = !png_sig_cmp(header, 0, 8);
 				if(!is_png){
 					fclose(fp);
-					puts("Make sure what you are loading is a valid png");
+					puts("Make sure what you are loading is a valid PNG");
 					break;
 				}
 				png_structp png_ptr=png_create_read_struct(PNG_LIBPNG_VER_STRING,NULL,NULL,NULL);
 				if (!png_ptr){
 					fclose(fp);
-					puts("Error creating png read struct");
+					puts("Error creating PNG read struct");
 					break;
 				}
 				png_infop info_ptr = png_create_info_struct(png_ptr);
 				if (!info_ptr){
 					fclose(fp);
-					puts("Error creating png info struct");
+					puts("Error creating PNG info struct");
 					png_destroy_read_struct(&png_ptr,(png_infopp)NULL, (png_infopp)NULL);
 					break;
 				}
@@ -83,21 +127,23 @@ int main(void){
 					#endif
 				}
 				png_color_16 background_color;
+				memset(&background_color,0,sizeof(png_color_16));//Black
+
 				png_set_background_fixed(png_ptr,&background_color,PNG_BACKGROUND_GAMMA_SCREEN, 0, PNG_FP_1);
 				png_read_update_info(png_ptr, info_ptr);
 				//Read the image two rows at a time for bilinear scaling
 				
 				uint16_t * vram=(uint16_t*)VRAM_ADDRESS;
 				unsigned h;
-				if((width==384)&&(height<=216)){
-					png_bytep row_pointers[216];
+				if((width==VRAM_WIDTH)&&(height<=VRAM_HEIGHT)){
+					png_bytep row_pointers[VRAM_HEIGHT];
 					//Decode the PNG file without scaling.
-					vram+=((216-height)/2)*384;
+					vram+=((VRAM_HEIGHT-height)/2)*VRAM_WIDTH;
 					uint8_t*imgTmp=alloca(width*height*3);
 					uint8_t*d=imgTmp;
 					for(h=0;h<height;++h){
 						row_pointers[h]=d;
-						d+=384*3;
+						d+=VRAM_WIDTH*3;
 					}
 					png_read_image(png_ptr, row_pointers);
 					d=imgTmp;
@@ -107,27 +153,27 @@ int main(void){
 					}
 				}else{
 					unsigned w2,h2,centerx,centery;
-					unsigned xpick=(384<<16)/width,ypick=(216<<16)/height;
+					unsigned xpick=(VRAM_WIDTH<<16)/width,ypick=(VRAM_HEIGHT<<16)/height;
 					if(xpick==ypick){
-						w2=384;
-						h2=216;
+						w2=VRAM_WIDTH;
+						h2=VRAM_HEIGHT;
 						centerx=centery=0;
 					}else if(xpick<ypick){
-						w2=384;
-						h2=height*384/width;
+						w2=VRAM_WIDTH;
+						h2=height*VRAM_WIDTH/width;
 						centerx=0;
-						centery=(216-h2)/2;
+						centery=(VRAM_HEIGHT-h2)/2;
 					}else{
-						w2=width*216/height;
-						h2=216;
-						centerx=(384-w2)/2;
+						w2=width*VRAM_HEIGHT/height;
+						h2=VRAM_HEIGHT;
+						centerx=(VRAM_WIDTH-w2)/2;
 						centery=0;
 					}
 					// EDIT: added +1 to account for an early rounding problem
 					unsigned x_ratio = (width<<12)/w2;
 					unsigned y_ratio = (height<<12)/h2;
 					uint8_t * decodeBuf=alloca(width*3*2);//Enough memory to hold two rows of data
-					vram+=(centery*384)+centerx;
+					vram+=(centery*VRAM_WIDTH)+centerx;
 					unsigned i,j,yo=0;
 					png_read_row(png_ptr,decodeBuf,NULL);
 					unsigned left=height-1;
@@ -181,7 +227,7 @@ int main(void){
 							*vram++=(((A[0]+B[0]+C[0]+D[0]) & 0xF8) << 8) | (((A[1]+B[1]+C[1]+D[1]) & 0xFC) << 3) | ((A[2]+B[2]+C[2]+D[2]) >> 3);
 							//*out++=A+B+C+D;
 						}
-						vram+=384-w2;
+						vram+=VRAM_WIDTH-w2;
 					}
 					while(left--){
 						png_read_row(png_ptr,decodeBuf,NULL);//Avoid a too much data warning
@@ -192,7 +238,8 @@ int main(void){
 				png_destroy_read_struct(&png_ptr, &info_ptr,(png_infopp)NULL);
 				fclose(fp);
 				fp=0;
-				Bdisp_PutDisp_DD();
+				DoDMAlcdNonblock((unsigned)VRAM_ADDRESS);
+				DmaWaitNext();
 				int col=0,row=0;
 				unsigned short keycode=0;
 				GetKeyWait_OS(&col,&row,0,0,0,&keycode);//Better solution to avoid border
