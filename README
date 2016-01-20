@@ -20,8 +20,8 @@ actually takes you to the menu) to go back to the file browser.
 ===============================================================================
                                  Notes and tips
 ===============================================================================
-Since  the Casio Prizm does not have lots of flash memory run Pngout on the im-
-ages before putting them on your calculator.
+Since  the  Casio  Prizm  does  not  have  lots  of  flash memory run Pngout or
+pngwolf-zopfli on the images before putting them on your calculator.
 
 I  have  included  instructions  on  how  to  compile  Libpng  and  Zlib  here:
 https://github.com/ComputerNerd/Casio-ImageView/blob/master/Compile%20Libpng
