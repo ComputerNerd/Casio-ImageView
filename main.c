@@ -20,7 +20,6 @@ void abort(void){
 }
 #define LCD_GRAM	0x202
 #define LCD_BASE	0xB4000000
-#define VRAM_ADDR	0xA8000000
 #define SYNCO() __asm__ volatile("SYNCO\n\t":::"memory");
 // Module Stop Register 0
 #define MSTPCR0		(volatile unsigned*)0xA4150030
@@ -60,8 +59,8 @@ static void DoDMAlcdNonblockStrip(unsigned y1,unsigned y2,unsigned addr){
 static void DoDMAlcdNonblock(unsigned addr){
 	DoDMAlcdNonblockStrip(0,VRAM_HEIGHT-1,addr);
 }
+static uint16_t __attribute__ ((aligned (32))) VRAM_ADDRESS[VRAM_WIDTH*VRAM_HEIGHT];
 int main(void){
-	static uint16_t __attribute__ ((aligned (32))) VRAM_ADDRESS[VRAM_WIDTH*VRAM_HEIGHT];
 	Bdisp_EnableColor(1);
 	while(1){
 		struct FBL_Filelist_Data *list = FBL_Filelist_cons("\\\\fls0\\", "*.png", "Open file (*.png)");
@@ -77,7 +76,7 @@ int main(void){
 			char buf[128];
 			FBL_Filelist_getFilename(list,buf,127);
 			if(!strncmp(buf,"\\\\fls0\\",7)){
-				//load png file
+				// Load PNG file
 				fp = fopen(buf, "rb");
 				if(!fp){
 					perror("Error while reading file:");
@@ -169,7 +168,6 @@ int main(void){
 						centerx=(VRAM_WIDTH-w2)/2;
 						centery=0;
 					}
-					// EDIT: added +1 to account for an early rounding problem
 					unsigned x_ratio = (width<<12)/w2;
 					unsigned y_ratio = (height<<12)/h2;
 					uint8_t * decodeBuf=alloca(width*3*2);//Enough memory to hold two rows of data
