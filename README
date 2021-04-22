@@ -46,5 +46,4 @@ Only enough  ram to hold 2 rows are needed which is 6*width bytes of ram. I use
 bilinear scaling that is why two rows are needed to be read. After the code in-
 terpolates  the  pixels the resulting pixel is converted to RGB565 and sent  to
 VRAM.  When the width==384 and height<=216 a buffer is created and the image is
-read all at once then simply converted to RGB565 and send to VRAM
-
+read all at once then simply converted to RGB565 and send to VRAM.
