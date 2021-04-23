@@ -6,7 +6,7 @@ zlib)  to  decompress a PNG file. When you load a png file it is  resampled  to
 fill the screen but aspect ratio is preserved. As of now a simple bilinear fil-
 tering is used but if there is interest I may replace it with something better.
 
-The version you downloaded is version 1.003. Note that there is always the pos-
+The version you downloaded  is version 1.1. Note  that there is always the pos-
 sibility  for a new version, so if you noticed that I posted in the PNG  viewer
 thread see what I posted, there may be an update.
 

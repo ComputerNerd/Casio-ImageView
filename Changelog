@@ -1,3 +1,8 @@
+Version 1.1
+DMA from the on-chip memory using a line buffer. This lets you see the
+decoding happen in real time. Also update the version of Libpng to 1.6.37.
+The goal of this version is to support the fx-CG50.
+
 Version 1.003
 Uses full frame and update Libpng to version 1.6.21.
 
