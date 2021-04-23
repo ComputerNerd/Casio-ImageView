@@ -48,7 +48,7 @@ static void DoDMAlcdNonblockStrip(unsigned y1,unsigned y2,unsigned addr){
 	*MSTPCR0&=~(1<<21);//Clear bit 21
 	*DMA0_CHCR_0&=~1;//Disable DMA on channel 0
 	*DMA0_DMAOR=0;//Disable all DMA
-	*DMA0_SAR_0=(addr+(y1*VRAM_WIDTH*2))&0x1FFFFFFF;//Source address is VRAM
+	*DMA0_SAR_0=addr; //Source address is VRAM
 	*DMA0_DAR_0=LCD_BASE&0x1FFFFFFF;//Destination is LCD
 	*DMA0_TCR_0=((y2-y1+1)*VRAM_WIDTH)/16;//Transfer count bytes/32
 	*DMA0_CHCR_0=0x00101400;
@@ -56,10 +56,6 @@ static void DoDMAlcdNonblockStrip(unsigned y1,unsigned y2,unsigned addr){
 	*DMA0_DMAOR&=~6;//Clear flags
 	*DMA0_CHCR_0|=1;//Enable channel0 DMA
 }
-static void DoDMAlcdNonblock(unsigned addr){
-	DoDMAlcdNonblockStrip(0,VRAM_HEIGHT-1,addr);
-}
-static uint16_t __attribute__ ((aligned (32))) VRAM_ADDRESS[VRAM_WIDTH*VRAM_HEIGHT];
 int main(void){
 	Bdisp_EnableColor(1);
 	while(1){
@@ -72,7 +68,6 @@ int main(void){
 		
 		// Check if a file was returned
 		if(list->result == 1){
-			memset((unsigned short*)VRAM_ADDRESS,0,VRAM_WIDTH*VRAM_HEIGHT*2);
 			char buf[128];
 			FBL_Filelist_getFilename(list,buf,127);
 			if(!strncmp(buf,"\\\\fls0\\",7)){
@@ -132,24 +127,49 @@ int main(void){
 				png_read_update_info(png_ptr, info_ptr);
 				//Read the image two rows at a time for bilinear scaling
 				
-				uint16_t * vram=(uint16_t*)VRAM_ADDRESS;
+				uint16_t * lineBuffer = (uint16_t*)0xE5017000; // Holds four lines. We need four lines because if we use less it's not a multiple of 32 bytes.
 				unsigned h;
+				memset(lineBuffer, 0, VRAM_WIDTH * 2 * 4); // The border is black. In both cases we need this cleared.
+				unsigned firstRowOnBottomWithoutPixels, onLine, nextDmaRow;
 				if((width==VRAM_WIDTH)&&(height<=VRAM_HEIGHT)){
-					png_bytep row_pointers[VRAM_HEIGHT];
-					//Decode the PNG file without scaling.
-					vram+=((VRAM_HEIGHT-height)/2)*VRAM_WIDTH;
-					uint8_t*imgTmp=alloca(width*height*3);
-					uint8_t*d=imgTmp;
+					// Decode the PNG file without scaling.
+					uint8_t trueColorLine[VRAM_WIDTH * 3];
+					unsigned i;
+
+					unsigned firstRowWithPixels = (VRAM_HEIGHT - height) / 2;
+					nextDmaRow = 0;
+
+					for (i = 0; i < firstRowWithPixels; i += 4) {
+						DmaWaitNext(); // This is before the DMA call because when we are done with the loop assuming that there are no border lines on the bottom we want to get started right away decoding the PNG.
+						DoDMAlcdNonblockStrip(i, i + 3, lineBuffer);
+						nextDmaRow = i + 4;
+					}
+					onLine = (firstRowWithPixels & 3);
+
+					uint16_t * lineBufferPixel = lineBuffer;
+					lineBufferPixel += onLine * VRAM_WIDTH;
 					for(h=0;h<height;++h){
-						row_pointers[h]=d;
-						d+=VRAM_WIDTH*3;
+						uint8_t * srcTrueColorPixel = trueColorLine;
+
+						png_read_row(png_ptr, trueColorLine, NULL);
+						for (i = 0; i < VRAM_WIDTH; ++i) {
+							*lineBufferPixel++ = ((srcTrueColorPixel[0] & 0xF8) << 8) | ((srcTrueColorPixel[1] & 0xFC) << 3) | (srcTrueColorPixel[2] >> 3);
+							srcTrueColorPixel += 3;
+						}
+
+						if (onLine == 3) {
+							DmaWaitNext();
+							DoDMAlcdNonblockStrip(nextDmaRow, nextDmaRow + 3, lineBuffer);
+
+							onLine = 0;
+							nextDmaRow += 4;
+							lineBufferPixel = lineBuffer;
+						} else {
+							++onLine;
+						}
 					}
-					png_read_image(png_ptr, row_pointers);
-					d=imgTmp;
-					for(h=0;h<width*height;++h){
-						*vram++=((d[0] & 0xF8) << 8) | ((d[1] & 0xFC) << 3) | (d[2] >> 3);
-						d+=3;
-					}
+
+					firstRowOnBottomWithoutPixels = firstRowWithPixels + height;
 				}else{
 					unsigned w2,h2,centerx,centery;
 					unsigned xpick=(VRAM_WIDTH<<16)/width,ypick=(VRAM_HEIGHT<<16)/height;
@@ -162,7 +182,7 @@ int main(void){
 						h2=height*VRAM_WIDTH/width;
 						centerx=0;
 						centery=(VRAM_HEIGHT-h2)/2;
-					}else{
+					}else{ // ypick > xpick
 						w2=width*VRAM_HEIGHT/height;
 						h2=VRAM_HEIGHT;
 						centerx=(VRAM_WIDTH-w2)/2;
@@ -171,7 +191,6 @@ int main(void){
 					unsigned x_ratio = (width<<12)/w2;
 					unsigned y_ratio = (height<<12)/h2;
 					uint8_t * decodeBuf=alloca(width*3*2);//Enough memory to hold two rows of data
-					vram+=(centery*VRAM_WIDTH)+centerx;
 					unsigned i,j,yo=0;
 					png_read_row(png_ptr,decodeBuf,NULL);
 					unsigned left=height-1;
@@ -185,6 +204,18 @@ int main(void){
 						png_read_row(png_ptr,decodeBuf+(width*3),NULL);
 						--left;
 					}
+
+					// First draw the border. centery is the first row number that will have pixels. centery + h2 is the first row where the bottom border starts.
+					firstRowOnBottomWithoutPixels = centery + h2;
+					nextDmaRow = 0;
+					for (i = 0; i < centery; i += 4) {
+						DmaWaitNext();
+						DoDMAlcdNonblockStrip(i, i + 3, lineBuffer);
+						nextDmaRow = i + 4;
+					}
+					onLine = (centery & 3);
+					// Now that we are done drawing some of the rows that are 100% border we can start drawing the image centered in the middle. The key will be ensuring that we never overwrite the border pixels on the left and the right.
+
 					for(i=0;i<h2;++i){
 						//Determine how many lines to read
 						unsigned read=((y_ratio * i)>>12)-yo;
@@ -202,6 +233,9 @@ int main(void){
 								}
 							}
 						}
+						uint16_t * lineBufPtr = lineBuffer;
+						lineBufPtr += onLine * VRAM_WIDTH;
+						lineBufPtr += centerx;
 						for(j=0;j<w2;++j){
 							unsigned A[3],B[3],C[3],D[3];
 							unsigned x = x_ratio * j;
@@ -222,10 +256,18 @@ int main(void){
 							}
 							// Y = A(1-w)(1-h) + B(w)(1-h) + C(h)(1-w) + Dwh
 						
-							*vram++=(((A[0]+B[0]+C[0]+D[0]) & 0xF8) << 8) | (((A[1]+B[1]+C[1]+D[1]) & 0xFC) << 3) | ((A[2]+B[2]+C[2]+D[2]) >> 3);
+							*lineBufPtr++=(((A[0]+B[0]+C[0]+D[0]) & 0xF8) << 8) | (((A[1]+B[1]+C[1]+D[1]) & 0xFC) << 3) | ((A[2]+B[2]+C[2]+D[2]) >> 3);
 							//*out++=A+B+C+D;
 						}
-						vram+=VRAM_WIDTH-w2;
+						if (onLine == 3) {
+							DmaWaitNext();
+							DoDMAlcdNonblockStrip(nextDmaRow, nextDmaRow + 3, lineBuffer);
+
+							onLine = 0;
+							nextDmaRow += 4;
+						} else {
+							++onLine;
+						}
 					}
 					while(left--){
 						png_read_row(png_ptr,decodeBuf,NULL);//Avoid a too much data warning
@@ -236,8 +278,27 @@ int main(void){
 				png_destroy_read_struct(&png_ptr, &info_ptr,(png_infopp)NULL);
 				fclose(fp);
 				fp=0;
-				DoDMAlcdNonblock((unsigned)VRAM_ADDRESS);
-				DmaWaitNext();
+
+				unsigned isCleared[4];
+				memset(isCleared, 0, sizeof(isCleared));
+				for (unsigned i = firstRowOnBottomWithoutPixels; i < VRAM_HEIGHT; ++i) {
+					if (!isCleared[onLine]) {
+						memset(lineBuffer + (VRAM_WIDTH * onLine), 0, VRAM_WIDTH * 2);
+						isCleared[onLine] = 1;
+					}
+					if (onLine == 3) {
+						DmaWaitNext();
+						DoDMAlcdNonblockStrip(nextDmaRow, nextDmaRow + 3, lineBuffer);
+
+						onLine = 0;
+						nextDmaRow += 4;
+					} else {
+						++onLine;
+					}
+				}
+
+				DmaWaitNext(); // Ensure that we are done with DMA.
+
 				int col=0,row=0;
 				unsigned short keycode=0;
 				GetKeyWait_OS(&col,&row,0,0,0,&keycode);//Better solution to avoid border
